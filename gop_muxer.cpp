@@ -14,7 +14,7 @@ uint32_t total = 0;
 int fail = 0;
 
 void show_progress(const char * item) {
-    puts(item);
+    printf("%7d/%d %.2lf%% %s     \r", progress, total, progress * 100.0 / total, item);
 }
 
 void load_gop_file(const char * gop_filename) {
@@ -26,10 +26,14 @@ void load_gop_file(const char * gop_filename) {
         auto len = strlen(buffer);
         if(buffer[len-1] == '\n') buffer[len-1] = 0;
         if(buffer[0] == 0) continue;
-        if(strncmp(buffer, "#options", 8) == 0)
-            sprintf(opt_filename, "%s%s", dir_prefix, buffer + 9);
-        else if(strncmp(buffer, "#headers", 8) == 0)
-            sprintf(hdr_filename, "%s%s", dir_prefix, buffer + 9);
+        if(strncmp(buffer, "#options", 8) == 0) {
+            if(!opt_filename[0])
+                sprintf(opt_filename, "%s%s", dir_prefix, buffer + 9);
+        }
+        else if(strncmp(buffer, "#headers", 8) == 0) {
+            if(!hdr_filename[0])
+                sprintf(hdr_filename, "%s%s", dir_prefix, buffer + 9);
+        }
         else {
             auto data_filename = new char[strlen(dir_prefix) + strlen(buffer) + 1];
             sprintf(data_filename, "%s%s", dir_prefix, buffer);
@@ -43,7 +47,7 @@ void load_gop_file(const char * gop_filename) {
     summary = (lsmash_video_summary_t *)lsmash_create_summary(LSMASH_SUMMARY_TYPE_VIDEO);
     summary->sample_type = ISOM_CODEC_TYPE_HVC1_VIDEO;
 
-    show_progress(gop_filename);
+    printf("%s loaded.\n", gop_filename);
 }
 
 void load_options_file(const char * opt_filename) {
@@ -345,63 +349,66 @@ void clean_up() {
 }
 
 void help(const char * argv[]) {
-    printf("%s <file.gop>\n", argv[0]);
+    printf("%s <file1.gop> [<file2.gop> ... <fileN.gop>]\n", argv[0]);
     puts("");
-    puts("Mux given file with its segments into an mp4 file.");
+    puts("Mux given files with its segments into an mp4 file.");
     puts("");
-    puts("CAUTION! 'file.mp4' will be overwritten without confirmation!");
+    puts("CAUTION! 'fileN.mp4' will be overwritten without confirmation!");
     puts("");
 }
 
 int main(int argc, const char * argv[]) {
-    if (argc != 2) {
+    if (argc < 2) {
         help(argv);
         return -1;
     }
-    const char* gop_filename = argv[1];
-    const char* extension = gop_filename + strlen(gop_filename) - 4;
-    if (strcmp(extension, ".gop") != 0) {
-        printf("Only .gop file is accepted, %s given.\n", gop_filename);
-        return -2;
+
+    for (int i = 1; i < argc; i++) {
+        const char* gop_filename = argv[i];
+        const char* extension = gop_filename + strlen(gop_filename) - 4;
+        if (strcmp(extension, ".gop") != 0) {
+            printf("Only .gop file is accepted, %s given.\n", gop_filename);
+            return -2;
+        }
+
+        const char* slash = strrchr(gop_filename, '/');
+        if(slash == NULL) slash = strrchr(gop_filename, '\\');
+        if(slash == NULL) {
+            dir_prefix = "";
+            slash = gop_filename;
+        }
+        else {
+            int dir_len =  slash - gop_filename + 2;
+            char* tmp_dir_prefix = new char[dir_len];
+            strncpy(tmp_dir_prefix, gop_filename, dir_len - 1);
+            tmp_dir_prefix[dir_len - 1] = 0;
+            dir_prefix = tmp_dir_prefix;
+            slash++;
+        }
+        int len = strlen(slash) - 3;
+        name_prefix = new char[len];
+        strncpy(name_prefix, slash, len - 1);
+        name_prefix[len - 1] = 0;
+
+        sprintf(out_filename, "%s%s.mp4", dir_prefix, name_prefix);
+
+        printf("Dir: %-20s  File: %-20s\n", dir_prefix, name_prefix);
+
+        load_gop_file(argv[i]);
     }
-
-    const char* slash = strrchr(gop_filename, '/');
-    if(slash == NULL) slash = strrchr(gop_filename, '\\');
-    if(slash == NULL) {
-        dir_prefix = "";
-        slash = gop_filename;
-    }
-    else {
-        int dir_len =  slash - gop_filename + 2;
-        char* tmp_dir_prefix = new char[dir_len];
-        strncpy(tmp_dir_prefix, gop_filename, dir_len - 1);
-        tmp_dir_prefix[dir_len - 1] = 0;
-        dir_prefix = tmp_dir_prefix;
-        slash++;
-    }
-    int len = strlen(slash) - 3;
-    name_prefix = new char[len];
-    strncpy(name_prefix, slash, len - 1);
-    name_prefix[len - 1] = 0;
-
-    sprintf(out_filename, "%s%s.mp4", dir_prefix, name_prefix);
-
-    printf("Dir: %s\nFile: %s\n", dir_prefix, name_prefix);
-
-    load_gop_file(gop_filename);
 
     if(opt_filename[0] == 0) { puts("Options file missing."); return -3; }
     if(hdr_filename[0] == 0) { puts("Headers file missing."); return -3; }
     if(data_list.size() == 0) { puts("Data files missing."); return -3; }
 
-    total = data_list.size() + 2;
-    show_progress("");
+    total = data_list.size();
+    printf("Saving to %s\n", out_filename);
 
     load_options_file(opt_filename);
-
     load_headers_file(hdr_filename);
 
     for (auto data_filename : data_list) {
+        progress++;
         load_data_file(data_filename);
     }
 

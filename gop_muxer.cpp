@@ -42,11 +42,6 @@ void load_gop_file(const char * gop_filename) {
     }
     fclose(fp);
 
-    p_root = lsmash_create_root();
-    lsmash_open_file(out_filename, 0, &file_param);
-    summary = (lsmash_video_summary_t *)lsmash_create_summary(LSMASH_SUMMARY_TYPE_VIDEO);
-    summary->sample_type = ISOM_CODEC_TYPE_HVC1_VIDEO;
-
     printf("%s loaded.\n", gop_filename);
 }
 
@@ -403,6 +398,11 @@ int main(int argc, const char * argv[]) {
 
     total = data_list.size();
     printf("Saving to %s\n", out_filename);
+
+    p_root = lsmash_create_root();
+    lsmash_open_file(out_filename, 0, &file_param);
+    summary = (lsmash_video_summary_t *)lsmash_create_summary(LSMASH_SUMMARY_TYPE_VIDEO);
+    summary->sample_type = ISOM_CODEC_TYPE_HVC1_VIDEO;
 
     load_options_file(opt_filename);
     load_headers_file(hdr_filename);

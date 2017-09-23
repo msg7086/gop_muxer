@@ -157,8 +157,8 @@ void load_options_file(const char * opt_filename) {
 
 void load_headers_file(const char * hdr_filename) {
     auto fp = fopen(hdr_filename, "r");
-    uint8_t* buffer[4];
-    uint32_t size[4] = {0};
+    uint8_t* buffer[3];
+    uint32_t size[3] = {0};
     int i = 0;
     while(!feof(fp)) {
         int sizebuffer = 0;
@@ -168,12 +168,12 @@ void load_headers_file(const char * hdr_filename) {
         memcpy(buffer[i], &sizebuffer, sizeof(uint32_t));
         fread(buffer[i] + 4, sizeof(uint8_t), size[i], fp);
         i++;
-        if(i > 3)
+        if(i >= 3)
             break;
     }
-    fclose(fp);
+
     if(i < 3) {
-        printf("Expect 3 headers, %d given.\n", i);
+        printf("Expect 3+ headers, %d given.\n", i);
         fail = -4;
         return;
     }
@@ -193,11 +193,19 @@ void load_headers_file(const char * hdr_filename) {
     lsmash_destroy_codec_specific_data(cs);
     i_sample_entry = lsmash_add_sample_entry(p_root, i_track, summary);
 
-    if(size[3] > 0)
-    {
-        i_sei_size = size[3] + 4;
-        p_sei_buffer = buffer[3];
+    i_sei_size = 0;
+    while(!feof(fp)) {
+        int size = 0;
+        int sizebuffer = 0;
+        fread(&sizebuffer, sizeof(uint32_t), 1, fp);
+        if(feof(fp)) break;
+        size = SWAP(sizebuffer);
+        p_sei_buffer = (uint8_t*) realloc(p_sei_buffer, i_sei_size + size + sizeof(uint32_t));
+        memcpy(p_sei_buffer + i_sei_size, &sizebuffer, sizeof(uint32_t));
+        fread(p_sei_buffer + i_sei_size + sizeof(uint32_t), sizeof(uint8_t), size, fp);
+        i_sei_size += size + sizeof(uint32_t);
     }
+    fclose(fp);
 
     show_progress(hdr_filename);
 }

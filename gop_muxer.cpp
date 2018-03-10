@@ -19,6 +19,10 @@ void show_progress(const char * item) {
 
 void load_gop_file(const char * gop_filename) {
     auto fp = fopen(gop_filename, "r");
+    if(fp == NULL) {
+        printf("Unable to load %s, skipping.\n", gop_filename);
+        return;
+    }
     char buffer[8192];
     while(!feof(fp)) {
         buffer[0] = 0;

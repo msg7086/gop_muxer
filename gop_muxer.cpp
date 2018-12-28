@@ -160,7 +160,7 @@ void load_options_file(const char * opt_filename) {
 }
 
 void load_headers_file(const char * hdr_filename) {
-    auto fp = fopen(hdr_filename, "r");
+    auto fp = fopen(hdr_filename, "rb");
     uint8_t* buffer[3];
     uint32_t size[3] = {0};
     int i = 0;

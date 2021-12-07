@@ -38,6 +38,7 @@ void load_gop_file(const char * gop_filename) {
             if(!hdr_filename[0])
                 sprintf(hdr_filename, "%s%s", dir_prefix, buffer + 9);
         }
+        else if(buffer[0] == '#') {}
         else {
             auto data_filename = new char[strlen(dir_prefix) + strlen(buffer) + 1];
             sprintf(data_filename, "%s%s", dir_prefix, buffer);
